@@ -67,13 +67,52 @@ func RequiredPassingRounds(kind ExcursionKind) int {
 
 func (c *DeviationCase) ConsecutivePassing() int {
 	n := 0
-	for i := len(c.Retests) - 1; i >= 0; i-- {
+	for i := len(c.Retests) - 1; i >= c.currentCycleStart(); i-- {
 		if c.Retests[i].Outcome != "pass" {
 			break
 		}
 		n++
 	}
 	return n
+}
+
+// currentCycleStart returns the index of the first retest round belonging to the
+// current remediation cycle. A remediation boundary (a failed retest or a rejected
+// review) starts a fresh cycle, so any rounds recorded before the most recent
+// boundary belong to a previous cycle and must not contribute to the consecutive
+// passing count, remaining-rounds calculation, or the current progress segment.
+//
+// Timeline entries are appended in the same order as retest rounds, and each
+// recorded round produces a "retest_passed" or "retest_failed" timeline entry. The
+// most recent remediation boundary is itself such a retest entry when a round
+// fails, so the rounds recorded up to and including that boundary timeline entry
+// form the previous cycle. Counting the retest-related timeline entries up to and
+// including the boundary yields the number of rounds in previous cycles; the
+// remaining rounds form the current cycle. This stays correct even before the
+// timeline entry for the round being recorded has been appended, because the count
+// is derived from prior timeline entries rather than the in-flight round.
+func (c *DeviationCase) currentCycleStart() int {
+	boundaryIndex := -1
+	for i := len(c.Timeline) - 1; i >= 0; i-- {
+		if c.Timeline[i].Type == "retest_failed" || c.Timeline[i].Type == "review_rejected" {
+			boundaryIndex = i
+			break
+		}
+	}
+	if boundaryIndex < 0 {
+		return 0
+	}
+	previousRounds := 0
+	for i := 0; i <= boundaryIndex; i++ {
+		switch c.Timeline[i].Type {
+		case "retest_passed", "retest_failed":
+			previousRounds++
+		}
+	}
+	if previousRounds > len(c.Retests) {
+		previousRounds = len(c.Retests)
+	}
+	return previousRounds
 }
 
 func (c *DeviationCase) latestRemediationBoundary() (time.Time, bool) {
@@ -156,11 +195,21 @@ func (c *DeviationCase) RetestProgress() RetestProgress {
 		p.BlockingReasons = append(p.BlockingReasons, "尚未制定纠正措施")
 	}
 	segment := RetestSegment{Number: 1, Rounds: []RetestRound{}}
-	for _, round := range c.Retests {
+	cycleStart := c.currentCycleStart()
+	flushSegment := func() {
+		if len(segment.Rounds) == 0 {
+			return
+		}
+		p.Segments = append(p.Segments, segment)
+		segment = RetestSegment{Number: segment.Number + 1, Rounds: []RetestRound{}}
+	}
+	for index, round := range c.Retests {
+		if index == cycleStart && cycleStart > 0 {
+			flushSegment()
+		}
 		segment.Rounds = append(segment.Rounds, round)
 		if round.Outcome == "fail" {
-			p.Segments = append(p.Segments, segment)
-			segment = RetestSegment{Number: segment.Number + 1, Rounds: []RetestRound{}}
+			flushSegment()
 		}
 	}
 	lastWasFailure := len(c.Retests) > 0 && c.Retests[len(c.Retests)-1].Outcome == "fail"
