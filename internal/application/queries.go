@@ -13,16 +13,11 @@ func (s *Service) Get(caseID string) (*domain.DeviationCase, error) {
 	if err != nil {
 		return nil, err
 	}
-	if cached, ok := s.overlapCache.Load(caseID); ok {
-		c.RelatedCases = append([]domain.CaseOverlap(nil), cached.([]domain.CaseOverlap)...)
-		return c, nil
-	}
 	all, err := s.repo.List()
 	if err != nil {
 		return nil, err
 	}
 	c.RelatedCases = domain.FindOverlaps(c.RoomCode, c.AffectedWindowStart, c.AffectedWindowEnd, all, c.CaseID)
-	s.overlapCache.Store(caseID, append([]domain.CaseOverlap(nil), c.RelatedCases...))
 	return c, nil
 }
 func (s *Service) List() ([]*domain.DeviationCase, error) {

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
-	"sync"
 	"time"
 
 	"cleanroom-recovery-ledger/internal/domain"
@@ -12,10 +11,9 @@ import (
 )
 
 type Service struct {
-	repo         Repository
-	coordinator  *Coordinator
-	now          func() time.Time
-	overlapCache sync.Map
+	repo        Repository
+	coordinator *Coordinator
+	now         func() time.Time
 }
 
 func New(repo Repository) *Service {
