@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>洁净室恢复放行台账</title><link rel="stylesheet" href="/assets/app.css"></head>
+<body>
+<header><div><p class="eyebrow">CLEANROOM RECOVERY CONTROL</p><h1>环境偏离恢复放行台账</h1></div><div id="connection" class="badge">正在连接</div></header>
+<main>
+<aside><button id="new-case" class="primary">登记新偏离</button><h2>案件</h2><div id="case-list" aria-live="polite"></div></aside>
+<section id="workspace">
+<div id="empty"><h2>选择一个案件</h2><p>沿时间线完成调查、纠正、连续复测与独立复核。</p></div>
+<div id="case-view" hidden>
+<div class="case-head"><div><span id="case-status" class="badge"></span><h2 id="case-title"></h2><p id="case-meta"></p><div id="case-related"></div></div><button id="reload">重新加载</button></div>
+<div id="conflict" class="alert" hidden>页面修订已过期。输入内容已保留，请重新加载最新案件后再提交。</div>
+<nav><button data-tab="timeline" class="active">状态时间线</button><button data-tab="investigation">调查与纠正</button><button data-tab="retest">连续复测</button><button data-tab="review">复核与档案</button></nav>
+<div id="timeline" class="panel tab"></div>
+<div id="investigation" class="panel tab" hidden>
+<h3>结构化根因调查</h3><form id="investigation-form"><div class="grid"><label>调查员<input name="investigator_id" required></label><label>根因分类<input name="root_cause_category" required></label><label>人员发现<textarea name="personnel_findings" required></textarea></label><label>设备发现<textarea name="equipment_findings" required></textarea></label><label>清洁活动发现<textarea name="cleaning_findings" required></textarea></label><label>相邻采样证据<textarea name="adjacent_sample_findings" required></textarea></label></div><label>根因结论<textarea name="root_cause_statement" required></textarea></label><label>证据摘要（逗号分隔）<input name="evidence_digests" required></label><button>确认调查</button></form>
+<h3>纠正措施</h3><div id="actions"></div><form id="action-form" class="grid"><label>措施说明<input name="description" required></label><label>责任人<input name="owner_id" required></label><label>替代已撤销措施（可选）<select name="replaced_action_id"><option value="">非替代措施</option></select></label><button>新增措施</button></form>
+</div>
+<div id="retest" class="panel tab" hidden><h3>连续复测序列</h3><div id="retest-progress"></div><div id="retests"></div><form id="retest-form" class="grid"><label>采样时间<input name="sampled_at" type="datetime-local" required></label><label>观测值<input name="observed_value" type="number" min="0" step="any" required></label><label>案件适用限值<input name="limit_value" type="number" step="any" readonly required></label><label>仪器引用<input name="instrument_ref" required></label><label>证据摘要<input name="evidence_digest" required></label><label>记录人<input name="recorded_by" required></label><button>登记不可覆盖复测轮次</button></form></div>
+<div id="review" class="panel tab" hidden><h3>独立质量复核</h3><div id="preflight"></div><form id="review-form"><label>复核员<input name="reviewer_id" required></label><label>决定<select name="decision"><option value="approve">批准</option><option value="reject">驳回</option></select></label><label>驳回理由<textarea name="reason"></textarea></label><button>提交复核决定</button></form><div id="archive"></div></div>
+</div></section>
+</main>
+<dialog id="create-dialog"><form id="create-form"><h2>登记环境偏离</h2><div class="grid"><label>案件编号<input name="case_id" required pattern="[A-Za-z0-9_-]{3,80}"></label><label>房间<input name="room_code" required></label><label>类型<select name="excursion_kind"><option value="microbial">微生物</option><option value="particle">粒子</option></select></label><label>采样点<input name="sample_point" required></label><label>观测值<input name="observed_value" type="number" min="0" step="any" required></label><label>限值<input name="limit_value" type="number" min="0" step="any" required></label><label>发生时间<input name="occurred_at" type="datetime-local" required></label><label>影响开始<input name="affected_window_start" type="datetime-local" required></label><label>影响结束<input name="affected_window_end" type="datetime-local" required></label><label>登记人<input name="actor_id" required></label></div><div id="overlap-preview" class="scope-preview">填写房间和影响时间窗后自动检查关联案件。</div><label id="overlap-confirm-wrap" hidden><span><input name="overlap_confirmed" type="checkbox"> 我已查看并确认上述交叠影响范围</span></label><div class="dialog-actions"><button type="button" id="cancel-create">取消</button><button class="primary">创建并冻结影响范围</button></div></form></dialog>
+<div id="toast" role="status" aria-live="polite"></div><script src="/assets/app.js" defer></script>
+</body></html>
