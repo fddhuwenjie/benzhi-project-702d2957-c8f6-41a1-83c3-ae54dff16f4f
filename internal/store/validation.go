@@ -148,6 +148,8 @@ func validateActions(c *domain.DeviationCase) error {
 func validateRetests(c *domain.DeviationCase) error {
 	seen := make(map[string]struct{}, len(c.Retests))
 	previous := time.Time{}
+	supplementalCompletedAt, hasSupplemental := c.SupplementalCorrectionCompletedAt()
+	deadline, hasDeadline := c.SupplementalCorrectionDeadline()
 	for index, retest := range c.Retests {
 		if retest.CaseID != c.CaseID || retest.Sequence != index+1 {
 			return errors.New("复测案件或序号无效")
@@ -170,6 +172,9 @@ func validateRetests(c *domain.DeviationCase) error {
 		if strings.TrimSpace(retest.InstrumentRef) == "" || strings.TrimSpace(retest.EvidenceDigest) == "" {
 			return errors.New("复测仪器或证据缺失")
 		}
+	}
+	if hasSupplemental && hasDeadline && !deadline.After(supplementalCompletedAt) {
+		return errors.New("边界后的复测采样时间未晚于补充纠正完成时间")
 	}
 	return nil
 }

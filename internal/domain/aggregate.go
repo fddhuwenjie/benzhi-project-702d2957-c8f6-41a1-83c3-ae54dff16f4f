@@ -215,6 +215,9 @@ func (c *DeviationCase) RecordRetest(in RetestInput) error {
 	if len(c.Retests) > 0 && !in.SampledAt.After(c.Retests[len(c.Retests)-1].SampledAt) {
 		return invalid("sampled_at", "复测必须按采样时间递增")
 	}
+	if completedAt, ok := c.SupplementalCorrectionCompletedAt(); ok && !in.SampledAt.After(completedAt) {
+		return invalid("sampled_at", fmt.Sprintf("边界后的复测采样时间必须晚于补充纠正完成时间 %s", completedAt.Format(time.RFC3339)))
+	}
 	outcome := "pass"
 	if in.ObservedValue > in.LimitValue {
 		outcome = "fail"

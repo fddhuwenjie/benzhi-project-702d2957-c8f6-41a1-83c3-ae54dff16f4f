@@ -98,6 +98,60 @@ func (c *DeviationCase) hasSupplementalCorrection() bool {
 	return false
 }
 
+// SupplementalCorrectionCompletedAt returns the completion time of the
+// latest completed corrective action that resolves the most recent
+// remediation boundary (a failed retest or a rejected review). When a
+// boundary exists but no completed action follows it, the zero time is
+// returned with ok=false to signal that supplemental correction has not
+// yet cleared the boundary.
+func (c *DeviationCase) SupplementalCorrectionCompletedAt() (time.Time, bool) {
+	boundary, needed := c.latestRemediationBoundary()
+	if !needed {
+		return time.Time{}, false
+	}
+	latest := time.Time{}
+	for _, action := range c.Actions {
+		if action.Status != ActionCompleted || action.CompletedAt == nil {
+			continue
+		}
+		if !action.CompletedAt.After(boundary) {
+			continue
+		}
+		if action.CompletedAt.After(latest) {
+			latest = action.CompletedAt.UTC()
+		}
+	}
+	if latest.IsZero() {
+		return time.Time{}, false
+	}
+	return latest, true
+}
+
+// SupplementalCorrectionDeadline returns the latest SampledAt among
+// retests recorded after the most recent remediation boundary. When no
+// boundary exists or no retests follow it, the zero time is returned.
+// Store validation uses it together with the supplemental completion
+// time to reject time-illegal retests persisted out of band.
+func (c *DeviationCase) SupplementalCorrectionDeadline() (time.Time, bool) {
+	boundary, needed := c.latestRemediationBoundary()
+	if !needed {
+		return time.Time{}, false
+	}
+	latest := time.Time{}
+	for _, retest := range c.Retests {
+		if !retest.SampledAt.After(boundary) {
+			continue
+		}
+		if retest.SampledAt.After(latest) {
+			latest = retest.SampledAt.UTC()
+		}
+	}
+	if latest.IsZero() {
+		return time.Time{}, false
+	}
+	return latest, true
+}
+
 func (c *DeviationCase) actionBlockingReasons() []string {
 	replacements := make(map[string]CorrectiveAction)
 	for _, action := range c.Actions {
