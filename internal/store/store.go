@@ -19,6 +19,8 @@ type Event struct {
 	Revision       int64  `json:"revision"`
 	Type           string `json:"type"`
 	At             string `json:"at"`
+	ActorID        string `json:"actor_id"`
+	Summary        string `json:"summary"`
 	PreviousDigest string `json:"previous_digest"`
 	Digest         string `json:"digest"`
 }

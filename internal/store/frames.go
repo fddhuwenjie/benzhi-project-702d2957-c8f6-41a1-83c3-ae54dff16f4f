@@ -35,7 +35,7 @@ func (s *FileStore) appendLatestEvent(c *domain.DeviationCase) error {
 	} else if c.Revision != 1 {
 		return fmt.Errorf("首个事件修订必须为 1")
 	}
-	e := Event{CaseID: c.CaseID, Revision: c.Revision, Type: last.Type, At: last.At.UTC().Format("2006-01-02T15:04:05.000000000Z"), PreviousDigest: prevDigest}
+	e := Event{CaseID: c.CaseID, Revision: c.Revision, Type: last.Type, At: last.At.UTC().Format("2006-01-02T15:04:05.000000000Z"), ActorID: last.ActorID, Summary: last.Summary, PreviousDigest: prevDigest}
 	e.Digest = eventDigest(e)
 	payload, err := json.Marshal(e)
 	if err != nil {
@@ -70,6 +70,10 @@ func eventDigest(e Event) string {
 	io.WriteString(h, "\x00")
 	io.WriteString(h, e.At)
 	io.WriteString(h, "\x00")
+	io.WriteString(h, e.ActorID)
+	io.WriteString(h, "\x00")
+	io.WriteString(h, e.Summary)
+	io.WriteString(h, "\x00")
 	io.WriteString(h, e.PreviousDigest)
 	return hex.EncodeToString(h.Sum(nil))
 }
@@ -82,7 +86,8 @@ func timelineMatches(c *domain.DeviationCase, events []Event) error {
 		return fmt.Errorf("案件 %s 的时间线与事件数不一致", c.CaseID)
 	}
 	for i, e := range events {
-		if e.Revision != int64(i+1) || e.Type != c.Timeline[i].Type {
+		entry := c.Timeline[i]
+		if e.Revision != int64(i+1) || e.Type != entry.Type || e.At != entry.At.UTC().Format("2006-01-02T15:04:05.000000000Z") || e.ActorID != entry.ActorID || e.Summary != entry.Summary {
 			return fmt.Errorf("案件 %s 的事件与时间线不一致", c.CaseID)
 		}
 	}
