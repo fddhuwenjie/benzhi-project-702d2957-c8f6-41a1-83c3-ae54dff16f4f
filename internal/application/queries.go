@@ -50,13 +50,7 @@ func (s *Service) Preflight(caseID string) (ReviewPreflight, error) {
 		return ReviewPreflight{}, err
 	}
 	progress := c.RetestProgress()
-	p := ReviewPreflight{RequiredPassingRounds: progress.RequiredPassingRounds, ConsecutivePassing: progress.ConsecutivePassing, EvidenceComplete: c.EvidenceComplete(), BlockingReasons: []string{}, Participants: []string{}}
-	if c.Investigation != nil {
-		p.Participants = append(p.Participants, c.Investigation.InvestigatorID)
-	}
-	for _, a := range c.Actions {
-		p.Participants = append(p.Participants, a.OwnerID)
-	}
+	p := ReviewPreflight{RequiredPassingRounds: progress.RequiredPassingRounds, ConsecutivePassing: progress.ConsecutivePassing, EvidenceComplete: c.EvidenceComplete(), BlockingReasons: []string{}, Participants: c.Participants()}
 	p.BlockingReasons = append(p.BlockingReasons, progress.BlockingReasons...)
 	if c.Status != domain.StatusReview {
 		p.BlockingReasons = append(p.BlockingReasons, "案件状态不是待复核")

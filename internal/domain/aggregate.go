@@ -247,14 +247,7 @@ func (c *DeviationCase) ReviewDecision(in ReviewInput) error {
 	if in.Decision != "approve" && in.Decision != "reject" {
 		return invalid("decision", "决定必须是 approve 或 reject")
 	}
-	participants := []string{}
-	if c.Investigation != nil {
-		participants = append(participants, c.Investigation.InvestigatorID)
-	}
-	for _, a := range c.Actions {
-		participants = append(participants, a.OwnerID)
-	}
-	if contains(participants, in.ReviewerID) {
+	if contains(c.Participants(), in.ReviewerID) {
 		return &DomainError{Code: CodeForbidden, Field: "reviewer_id", Message: "复核员不得参与调查或纠正"}
 	}
 	if in.Decision == "reject" && strings.TrimSpace(in.Reason) == "" {
@@ -286,6 +279,46 @@ func (c *DeviationCase) AttachArchive(a *ReleaseArchive) error {
 	c.Archive = a
 	return nil
 }
+
+// Participants returns the deduplicated history of every actor who has ever
+// confirmed an investigation or participated in corrective action for this
+// case. The investigation record is replaced whenever an investigation is
+// re-confirmed after a failed retest or a rejected review, so the current
+// InvestigatorID alone is insufficient to enforce independent review. The
+// append-only timeline preserves each confirmation and corrective action as a
+// tamper-evident event, so deriving the participant set from both the timeline
+// and the retained actions (including revoked ones) ensures that no prior
+// investigator or correction participant can later bypass the independence
+// restriction.
+func (c *DeviationCase) Participants() []string {
+	seen := map[string]struct{}{}
+	out := []string{}
+	add := func(id string) {
+		if strings.TrimSpace(id) == "" {
+			return
+		}
+		if _, ok := seen[id]; ok {
+			return
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	for _, entry := range c.Timeline {
+		switch entry.Type {
+		case "investigation_confirmed", "action_added", "action_completed", "action_revoked":
+			add(entry.ActorID)
+		}
+	}
+	if c.Investigation != nil {
+		add(c.Investigation.InvestigatorID)
+	}
+	for _, action := range c.Actions {
+		add(action.OwnerID)
+		add(action.RevokedBy)
+	}
+	return out
+}
+
 func (c *DeviationCase) bump(t, actor, summary string, at time.Time) {
 	c.Revision++
 	c.addTimeline(t, actor, summary, at)
